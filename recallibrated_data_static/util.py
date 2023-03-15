@@ -6,6 +6,7 @@ from operator import methodcaller
 import os
 from sklearn import linear_model
 import math
+from scipy.stats.stats import pearsonr
 
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
@@ -53,7 +54,7 @@ def regression_models(shifted_df):
 
     return  [x_regr, y_regr]
 
-def clean_df(df):
+def clean_df(df, callibration = False):
     indexExpStarts = 0
     for index, row in df.iterrows():
         if row['PathIDX'] != 99:
@@ -63,7 +64,7 @@ def clean_df(df):
     indexExpStarts = max(0, indexExpStarts-200)
     df = df.drop(range(indexExpStarts))
     df["left_right_eye_is_blinking"] = df["left_right_eye_is_blinking"].apply(lambda x: True if "True" in x else False)        
-    df["PathIDX"] = df["PathIDX"].apply(lambda x: 99 if x > 0 else x) # Removing moving points from callibration        
+    df["PathIDX"] = df["PathIDX"].apply(lambda x: 99 if (x > 0 and not callibration) else x) # Removing moving points from callibration        
     df = df.rename(columns={"left_right_eye_is_blinking": "blinks"})
     df = df.rename(columns={"PathIDX": "path"})
     df['seconds'] = df['seconds'].apply(lambda x: x-df['seconds'].iat[0])
@@ -189,3 +190,21 @@ def spatial_euc_errors(df):
     e_v = spatial_euc_error_v(df)
     e_c = spatial_euc_error_c(df)
     return [e_c, e_h, e_v]
+
+def pearsonr_from_df(df):
+    df = df[(df.path!=99) & (df.path>0) ]
+    x_g = df.gaze_vis_x.astype(float).fillna(0.0)
+    x_g_recal = df.gaze_x_recal.astype(float).fillna(0.0)
+    x_t = df.target_vis_x.astype(float).fillna(0.0)
+    x_offset = np.subtract(x_g,x_t)
+    x_offset_recal = np.subtract(x_g_recal,x_t)
+    
+    y_g = df.gaze_vis_y.astype(float).fillna(0.0)
+    y_g_recal = df.gaze_y_recal.astype(float).fillna(0.0)
+    y_t = df.target_vis_y.astype(float).fillna(0.0)
+    y_offset = np.subtract(y_g,y_t)
+    y_offset_recal = np.subtract(y_g_recal,y_t)
+    pr = pearsonr(x_offset, y_offset)
+    pr_recal = pearsonr(x_offset_recal, y_offset_recal)
+
+    return [[pr[0], pr[1]], [pr_recal[0], pr_recal[1]]]
