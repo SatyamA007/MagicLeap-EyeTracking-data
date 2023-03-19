@@ -54,7 +54,7 @@ def regression_models(shifted_df):
 
     return  [x_regr, y_regr]
 
-def clean_df(df):
+def clean_df(df, remove_static = True):
     indexExpStarts = 0
     for index, row in df.iterrows():
         if row['PathIDX'] != 99:
@@ -64,7 +64,7 @@ def clean_df(df):
     indexExpStarts = max(0, indexExpStarts-200)
     df = df.drop(range(indexExpStarts))
     df["left_right_eye_is_blinking"] = df["left_right_eye_is_blinking"].apply(lambda x: True if "True" in x else False)        
-    df["PathIDX"] = df["PathIDX"].apply(lambda x: 99 if x < 0 else x) # Removing static points from callibration        
+    df["PathIDX"] = df["PathIDX"].apply(lambda x: 99 if x < 0 and remove_static else x) # Removing static points from callibration        
     df = df.rename(columns={"left_right_eye_is_blinking": "blinks"})
     df = df.rename(columns={"PathIDX": "path"})
     df['seconds'] = df['seconds'].apply(lambda x: x-df['seconds'].iat[0])
